@@ -39,7 +39,7 @@ public class DataStreamService {
 	 * @return
 	 */
 	public static DataStreamService getService(String username, String password) {
-		return new DataStreamService(username, password, "test.idigi.com");
+		return new DataStreamService(username, password, "my.idigi.com");
 	}
 
 	/**
