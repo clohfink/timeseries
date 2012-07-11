@@ -1,5 +1,33 @@
 package com.digi.data.timeseries;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.AbstractMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+
+import com.ning.http.client.Response;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.converters.Converter;
+import com.thoughtworks.xstream.converters.MarshallingContext;
+import com.thoughtworks.xstream.converters.UnmarshallingContext;
+import com.thoughtworks.xstream.io.HierarchicalStreamReader;
+import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
+import com.thoughtworks.xstream.io.xml.StaxDriver;
+
 /**
  * Representation of a DataStream. Data streams represent time series data, a
  * sequence of data points. You can create a data stream with web services, by
@@ -12,20 +40,12 @@ package com.digi.data.timeseries;
  *            String, etc...
  */
 public class DataStream<DataType> {
+	private static final Logger log = LoggerFactory.getLogger(DataStream.class);
+	
 	/**
 	 * Name of the stream
 	 */
 	private String streamName;
-	
-	/**
-	 * host of the iDigi server
-	 */
-	private String host;
-	
-	/**
-	 * iDigi username
-	 */
-	private String user;
 	
 	/**
 	 * iDigi password
@@ -33,21 +53,50 @@ public class DataStream<DataType> {
 	private String password;
 	
 	/**
+	 * service used to create this datastream
+	 */
+	private DataStreamService service;
+	
+	/**
 	 * class of the generic type of this stream
 	 */
 	private Class<? extends DataType> valueClass;
 	
-	DataStream(String streamName, Class<? extends DataType> clazz, 
-			String user, String password) {
-		this(streamName, clazz, user, password, "test.idigi.com");
+	/**
+	 * Map of element:value for a data stream object
+	 */
+	private Map<String, String> streamValues = null; 
+	
+	/** Used to serialize DataStream as a Map from xml */
+	private static final XStream dsToMapXstream = new XStream(new StaxDriver());
+	static {
+		dsToMapXstream.alias("DataStream", Map.class);
+		dsToMapXstream.registerConverter(new DataStreamMapEntryConverter());
 	}
 	
-	DataStream(String streamName, Class<? extends DataType> valueClass, 
-			String user, String password, String host) {
+	/*
+	 * package only constructor called from DataStreamService, fetches the data type
+	 * to use as the valueClass
+	 */
+	DataStream(String streamName, DataStreamService service) {
 		this.streamName = streamName;
-		this.user = user;
-		this.password = password;
-		this.host = host;
+		this.service = service; 
+		try {
+			refresh();
+			this.valueClass = (Class<? extends DataType>) this.getDataType();
+		} catch (Exception e) {
+			this.valueClass = (Class<? extends DataType>) String.class;
+		}
+		
+	}
+	
+	/*
+	 * package only constructor called from DataStreamService
+	 */
+	DataStream(String streamName, Class<? extends DataType> valueClass, 
+			DataStreamService service) {
+		this.streamName = streamName;
+		this.service = service; 
 		this.valueClass = valueClass;
 	}
 
@@ -238,29 +287,27 @@ public class DataStream<DataType> {
 	 */
 	public String getStreamName() {
 		return streamName;
-	}
+	} 
 
+	public String getUnits() throws DataServiceException {
+		if(streamValues == null) {
+			this.refresh();
+		}
+		return streamValues.get("units");
+	}
+	
 	/**
-	 * host of the iDigi server
+	 * 
+	 * @return
+	 * @throws DataServiceException
 	 */
-	public String getHost() {
-		return host;
+	public String getDescription() throws DataServiceException {
+		if(streamValues == null) {
+			this.refresh();
+		}
+		return streamValues.get("description");
 	}
-
-	/**
-	 * iDigi username
-	 */
-	public String getUser() {
-		return user;
-	}
-
-	/**
-	 * iDigi password
-	 */
-	public String getPassword() {
-		return password;
-	}
-
+	
 	/**
 	 * class of the generic type of this stream
 	 */
@@ -268,4 +315,134 @@ public class DataStream<DataType> {
 		return valueClass;
 	}
  
+	/**
+	 * returns whatever class represents the datatype listed in the
+	 * streams metadata.  This is from the "dataType" element returned
+	 * from the /ws/DataStream web service.  If refresh() has been called
+	 * it will use the cached value from it, otherwise it will make
+	 * the web service call
+	 * 
+	 * @return
+	 * @throws DataServiceException
+	 */
+	public Class getDataType() throws DataServiceException {
+		Class ret = null;
+		if(streamValues == null) {
+			this.refresh();
+		}
+		String type = streamValues.get("dataType").toLowerCase();
+		if(type.equals("integer")) {
+			ret = Integer.class;
+		} else if(type.equals("double")) {
+			ret = Double.class;
+		} else if(type.equals("float")) {
+			ret = Float.class;
+		} else if(type.equals("long")) {
+			ret = Long.class;
+		} else {
+			ret = String.class;
+		}
+		return ret;
+	}
+	
+	/**
+	 * fetches the current values of the data stream meta data, ie dataType, description, units
+	 * 
+	 * @throws DataServiceException
+	 */
+	public void refresh() throws DataServiceException {
+		StringBuilder url = new StringBuilder("https://");
+		url.append(service.getHost()).append("/ws/DataStream/");
+		url.append(streamName);
+		log.debug(url.toString());
+		try {
+			Response rsp = DataStreamService.httpClient
+					.prepareGet(url.toString())
+					.setHeader("Authorization", "Basic " + service.getAuthHeader())
+					.execute()
+					.get(); 
+			log.debug(rsp.getResponseBody());
+			
+			if (rsp.getStatusCode() == 401) {
+				throw new DataServiceException("Invalid credentials, HTTP 401");
+			} else if (rsp.getStatusCode() != 200) {
+				log.error(rsp.getResponseBody());
+				throw new DataServiceException("Unexpected status code: " + 
+						rsp.getStatusCode());
+			}
+			// parse the data stream(s)
+			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+			DocumentBuilder db = dbf.newDocumentBuilder(); 
+			InputSource is = new InputSource(new StringReader(rsp.getResponseBody()));
+			Document dom = db.parse(is);
+			// get all the DataStream elements
+			NodeList streams = dom.getElementsByTagName("DataStream");
+			// if none of the xml results doesnt contain any dataStream elements
+			if(streams.getLength() < 1) {
+				throw new DataServiceException("Cannot find matching data stream");
+			}
+			// use streamValues as a flag for the loop and a check incase none of the
+			// returned streams match (ie its a parent path)
+			streamValues = null;
+			// only use the one that matches the name of this stream
+			for (int i = 0; i < streams.getLength() && streamValues == null; i++) {
+				String dataStream = DataStreamService.nodeToString(streams.item(i));
+				Map<String,String> dsMap = (Map<String,String>) dsToMapXstream.fromXML(dataStream);
+				if(dsMap.get("streamId").equals(this.streamName)) {
+					this.streamValues = dsMap;
+				}
+			}
+			// check if no matching streams were found
+			if(streamValues == null) {
+				throw new DataServiceException("Cannot find matching data stream");
+			}
+			
+		} catch (IOException e) {
+			throw new DataServiceException("IOException: " + e.getMessage(), e);
+		} catch (InterruptedException e) {
+			throw new DataServiceException("Request Interrupted: " + e.getMessage());
+		} catch (ExecutionException e) {
+			throw new DataServiceException("Failure to execute request: " + e.getMessage(), e);
+		} catch (SAXException e) {
+			throw new DataServiceException("Sax error parsing document: " + e.getMessage(), e);
+		} catch (ParserConfigurationException e) {
+			throw new DataServiceException("Cannot create DocumentBuilder: " + e.getMessage(), e);
+		}
+	} 
+
+	/*
+	 * internal mechanism to get the service used to create this stream
+	 */
+	DataStreamService getService() {
+		return service;
+	}
+	
+	/*
+	 * used by xstream to convert data stream to and from xml
+	 */
+	private static class DataStreamMapEntryConverter implements Converter{
+		public boolean canConvert(Class clazz) {
+			return AbstractMap.class.isAssignableFrom(clazz);
+		}
+
+		public void marshal(Object value, HierarchicalStreamWriter writer, MarshallingContext context) {
+			AbstractMap<String,String> map = (AbstractMap<String,String>) value;
+			for (Entry<String,String> entry : map.entrySet()) {
+				writer.startNode(entry.getKey().toString());
+				writer.setValue(entry.getValue().toString());
+				writer.endNode();
+			}
+		}
+
+		public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
+			Map<String, String> map = new HashMap<String, String>();
+
+			while(reader.hasMoreChildren()) {
+				reader.moveDown();
+				map.put(reader.getNodeName(), reader.getValue());
+				reader.moveUp();
+			}
+			return map;
+		}
+	}
 }

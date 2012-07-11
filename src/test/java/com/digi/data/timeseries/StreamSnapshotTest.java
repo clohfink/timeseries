@@ -22,13 +22,6 @@ public class StreamSnapshotTest {
 	
 	@Test
 	public void testFetchNext() throws Exception {
-		DataStream<Float> stream = new DataStream<Float>("device1/temp",
-				Float.class, "", "");
-		
-		for (DataPoint<Float> data : stream.get(Aggregate.Sum, Interval.Hour, 0, System.currentTimeMillis())) {
-			float sumForHour = data.getValue();
-			Date hour = new Date(data.getTimestamp());
-			System.err.println("Sum for the hour starting at " + hour + " is " + sumForHour);
-		}
+		// todo
 	}
 }

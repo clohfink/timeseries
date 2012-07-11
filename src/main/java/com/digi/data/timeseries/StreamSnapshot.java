@@ -34,7 +34,6 @@ import com.thoughtworks.xstream.io.xml.StaxDriver;
 
 public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, Iterable<DataPoint<DataType>> {
 	private static final Logger log = LoggerFactory.getLogger(StreamSnapshot.class);
-	private static final AsyncHttpClient httpClient = new AsyncHttpClient();
 	static final XStream xstream = new XStream(new StaxDriver());
 	static {
 		xstream.alias("DataPoint", DataPoint.class);
@@ -43,16 +42,17 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
 	private Interval interval;
 	private Aggregate aggregate;
 	private DataStream<DataType> stream;
+	private DataStreamService service;
 	private List<DataPoint<DataType>> buffer;
 	private long start;
 	private long end;
 	private ListenableFuture<Response> future; 
-	private String auth;
 	private Document dom;
 
 	public StreamSnapshot(DataStream<DataType> stream, long start, long end, 
 			Interval interval, Aggregate aggregate) {
 		this.stream = stream;
+		service = stream.getService();
 		this.start = start;
 		this.end = end;
 		this.interval = interval == null ? Interval.None : interval;
@@ -65,15 +65,13 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
 			throw new IllegalArgumentException(
 					"Aggregate and Interval must both be specified");
 		}
-		String userpassword = stream.getUser() + ":" + stream.getPassword();
-		this.auth = Base64.encode(userpassword.getBytes()).trim(); 
 	}
 
 	public synchronized ListenableFuture<Response> fetchNextChunk()
 			throws IOException {
 		if (future == null) {
 			StringBuilder url = new StringBuilder("https://");
-			url.append(stream.getHost()).append("/ws/DataPoint/");
+			url.append(service.getHost()).append("/ws/DataPoint/");
 			url.append(stream.getStreamName());
 			url.append("?startTime=").append(start);
 			url.append("&endTime=").append(end);
@@ -91,10 +89,10 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
 					url.append("&pageCursor=").append(cursor);
 				}
 			}
-			log.info("query: "+url);
-			future = httpClient.prepareGet(url.toString())
+			log.debug("query: "+url);
+			future = DataStreamService.httpClient.prepareGet(url.toString())
 					.setHeader("Content-type", "text/xml; charset=utf-8")
-					.setHeader("Authorization", "Basic " + auth).execute();
+					.setHeader("Authorization", "Basic " + service.getAuthHeader()).execute();
 		}
 		return future;
 	}
@@ -119,15 +117,15 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
 				DocumentBuilderFactory dbf = DocumentBuilderFactory
 						.newInstance();
 				DocumentBuilder db = dbf.newDocumentBuilder();
-				log.info(rsp.getResponseBody());
+				log.debug(rsp.getResponseBody());
 				InputSource is = new InputSource(new StringReader(rsp.getResponseBody()));
 				dom = db.parse(is);
 				// get all the DataPoint elements
 				NodeList points = dom.getElementsByTagName("DataPoint");
 				// add all the data points to the buffer
 				for (int i = 0; i < points.getLength(); i++) {
-					Node dataPoint = points.item(i);
-					DataPoint<DataType> dp = (DataPoint<DataType>) xstream.fromXML(nodeToString(dataPoint));
+					String dataPoint = DataStreamService.nodeToString(points.item(i));
+					DataPoint<DataType> dp = (DataPoint<DataType>) xstream.fromXML(dataPoint);
 					dp.setValueClass(stream.getValueClass());
 					buffer.add(dp);
 				}
@@ -160,22 +158,6 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
 	public void remove() {
 		// TODO record last read UUID and send an HTTP DELETE to support
 		throw new RuntimeException("Not implemented");
-	}
-
-	/*
-	 * source: http://stackoverflow.com/questions/4412848/xml-node-to-string-in-java
-	 */
-	private static String nodeToString(Node node) {
-		StringWriter sw = new StringWriter();
-		try {
-			Transformer t = TransformerFactory.newInstance().newTransformer();
-			t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-			t.setOutputProperty(OutputKeys.INDENT, "yes");
-			t.transform(new DOMSource(node), new StreamResult(sw));
-		} catch (TransformerException te) {
-			log.error(te.getMessage(), te);
-		}
-		return sw.toString();
 	}
 
 	/**
