@@ -13,7 +13,7 @@ public class DataStreamServiceTest {
 	public static final DataStreamService service = 
 			DataStreamService.getServiceForHost("", "", "");
 	
-	@Test
+	//@Test
 	public void testService() throws Exception {
 		DataStream<Double> stream = service.getStream("stream", Double.class);
 		stream.refresh();
