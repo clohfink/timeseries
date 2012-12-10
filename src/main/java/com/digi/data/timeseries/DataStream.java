@@ -77,7 +77,7 @@ public class DataStream<DataType> {
 		dsToMapXstream.alias("DataStream", Map.class);
 		dsToMapXstream.registerConverter(new DataStreamMapEntryConverter());
 	}
-	
+	 
 	/*
 	 * package only constructor called from DataStreamService, fetches the data type
 	 * to use as the valueClass
@@ -102,29 +102,6 @@ public class DataStream<DataType> {
 		this.streamName = streamName;
 		this.service = service; 
 		this.valueClass = valueClass;
-	}
-
-	/**
-	 * Fetch the data points between two times. The returned snapshot can be
-	 * used as iterator or iterable in loop, ie
-	 * 
-	 * <pre>
-	 * DataStream&lt;Float> steram = ...
-	 * for(DataPoint&lt;Float> data : stream.get(0, System.currentTimeMillis()) ){
-	 * 	   float dataPointValue = data.getValue();
-	 *     System.err.println(dataPointValue);
-	 * }
-	 * </pre>
-	 * 
-	 * @param start
-	 *            number of ms since epoc
-	 * @param end
-	 *            number of ms since epoc
-	 * @return
-	 */
-	public StreamSnapshot<DataType> get(long start, long end) {
-		return new StreamSnapshot<DataType>(this, start, end, 
-				Interval.None, Aggregate.None);
 	}
 	
 	/**
@@ -155,7 +132,40 @@ public class DataStream<DataType> {
 			long start, long end) {
 		return new StreamSnapshot<DataType>(this, start, end, interval, aggregate);
 	}
-	
+
+    /**
+     * Fetch the data points between two times. The returned snapshot can be
+     * used as iterator or iterable in loop, ie
+     * 
+     * <pre>
+     * DataStream&lt;Float> steram = ...
+     * for(DataPoint&lt;Float> data : stream.get(0, System.currentTimeMillis()) ){
+     *     float dataPointValue = data.getValue();
+     *     System.err.println(dataPointValue);
+     * }
+     * </pre>
+     * 
+     * @param start
+     *            number of ms since epoc
+     * @param end
+     *            number of ms since epoc
+     * @return
+     */
+    public StreamSnapshot<DataType> get(long start, long end) {
+        return get(Aggregate.None, Interval.None, start, end);
+    }
+    
+
+    /**
+     * Convenience method to fetch all data points in a stream, this is the equivalent to 
+     * <pre>
+     *  stream.get(-1, -1);
+     * </pre>  
+     */
+    public StreamSnapshot<DataType> getAll() {
+        return get(-1, -1);
+    }
+    
 	/**
 	 * Fetch the sum of the values for a given interval between two times. The returned
 	 * snapshot can be used as iterator or iterable in loop, ie

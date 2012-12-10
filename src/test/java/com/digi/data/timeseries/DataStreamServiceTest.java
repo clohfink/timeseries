@@ -11,7 +11,11 @@ public class DataStreamServiceTest {
 			.getLogger(DataStreamServiceTest.class);
 
 	public static final DataStreamService service = 
-			DataStreamService.getServiceForHost("", "", "");
+			DataStreamService.getServiceForHost(
+                    System.getProperty("host"), 
+                    System.getProperty("username"),
+                    System.getProperty("password")
+	        );
 	
 	//@Test
 	public void testService() throws Exception {
