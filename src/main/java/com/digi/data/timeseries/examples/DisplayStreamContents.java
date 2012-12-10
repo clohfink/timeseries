@@ -23,12 +23,11 @@ public class DisplayStreamContents {
 
         DataStreamService service = DataStreamService.getServiceForHost(host, username, password);
         DataStream<?> stream = service.getStream(id);
-         
-        try {
-            for (DataPoint point : stream.get(-1, -1)) {
-                 System.out.println(point.getData());
-            }
-        } catch (Throwable e) {
-        }
+        System.out.println(stream);
+        System.out.println("====");
+        for (DataPoint point : stream.get(-1, -1)) {
+             System.out.println(point.getData());
+        } 
+        System.out.println("done");
     }
 }

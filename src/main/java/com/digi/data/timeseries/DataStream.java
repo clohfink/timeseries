@@ -2,6 +2,7 @@ package com.digi.data.timeseries;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URISyntaxException;
 import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +13,10 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -19,7 +24,6 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import com.ning.http.client.Response;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.Converter;
 import com.thoughtworks.xstream.converters.MarshallingContext;
@@ -350,31 +354,30 @@ public class DataStream<DataType> {
 	 * 
 	 * @throws DataServiceException
 	 */
-	public void refresh() throws DataServiceException {
-		StringBuilder url = new StringBuilder("https://");
-		url.append(service.getHost()).append("/ws/DataStream/");
-		url.append(streamName);
-		log.debug(url.toString());
+	public void refresh() throws DataServiceException {  
 		try {
-			Response rsp = DataStreamService.httpClient
-					.prepareGet(url.toString())
-					.setHeader("Authorization", "Basic " + service.getAuthHeader())
-					.execute()
-					.get(); 
-			log.debug(rsp.getResponseBody());
-			
-			if (rsp.getStatusCode() == 401) {
-				throw new DataServiceException("Invalid credentials, HTTP 401");
-			} else if (rsp.getStatusCode() != 200) {
-				log.error(rsp.getResponseBody());
-				throw new DataServiceException("Unexpected status code: " + 
-						rsp.getStatusCode());
-			}
+		    URIBuilder builder = new URIBuilder();
+            builder.setScheme(service.SCHEME).setHost(service.getHost())
+                .setPath("/ws/DataStream/"+streamName);
+            
+            HttpGet httpget = new HttpGet(builder.build());
+            httpget.setHeader("Content-type", "text/xml; charset=utf-8");
+            httpget.setHeader("Authorization", "Basic " + service.getAuthHeader());
+            
+			HttpResponse rsp = DataStreamService.httpclient.execute(httpget); 
+
+            int status = rsp.getStatusLine().getStatusCode();
+            if (status == 401) {
+                throw new IOException("Invalid credentials, HTTP 401");
+            } else if (status != 200) {
+                log.error(EntityUtils.toString(rsp.getEntity()));
+                throw new IOException("Unexpected status code: (" + status + ") " +
+                        rsp.getStatusLine().getReasonPhrase());
+            } 
 			// parse the data stream(s)
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			DocumentBuilder db = dbf.newDocumentBuilder(); 
-			InputSource is = new InputSource(new StringReader(rsp.getResponseBody()));
-			Document dom = db.parse(is);
+			DocumentBuilder db = dbf.newDocumentBuilder();  
+			Document dom = db.parse(rsp.getEntity().getContent());
 			// get all the DataStream elements
 			NodeList streams = dom.getElementsByTagName("DataStream");
 			// if none of the xml results doesnt contain any dataStream elements
@@ -399,15 +402,14 @@ public class DataStream<DataType> {
 			
 		} catch (IOException e) {
 			throw new DataServiceException("IOException: " + e.getMessage(), e);
-		} catch (InterruptedException e) {
-			throw new DataServiceException("Request Interrupted: " + e.getMessage());
-		} catch (ExecutionException e) {
-			throw new DataServiceException("Failure to execute request: " + e.getMessage(), e);
 		} catch (SAXException e) {
 			throw new DataServiceException("Sax error parsing document: " + e.getMessage(), e);
 		} catch (ParserConfigurationException e) {
 			throw new DataServiceException("Cannot create DocumentBuilder: " + e.getMessage(), e);
-		}
+		} catch (URISyntaxException e) {
+		    throw new DataServiceException("Invalid URI created (/ws/DataStream/"+streamName+"): "
+		            + e.getMessage(), e);
+        }
 	} 
 
 	/*
@@ -417,7 +419,13 @@ public class DataStream<DataType> {
 		return service;
 	}
 	
-	/*
+	@Override
+    public String toString() {
+        return "DataStream [streamName=" + streamName + ", valueClass=" + valueClass + ", streamValues=" + streamValues
+                + "]";
+    }
+
+    /*
 	 * used by xstream to convert data stream to and from xml
 	 */
 	private static class DataStreamMapEntryConverter implements Converter{
@@ -439,7 +447,10 @@ public class DataStream<DataType> {
 
 			while(reader.hasMoreChildren()) {
 				reader.moveDown();
-				map.put(reader.getNodeName(), reader.getValue());
+				String name = reader.getNodeName();
+				if(!name.equals("currentValue")) { 
+	                map.put(name, reader.getValue());
+				}
 				reader.moveUp();
 			}
 			return map;

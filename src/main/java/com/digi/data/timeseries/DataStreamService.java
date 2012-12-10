@@ -9,32 +9,29 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.apache.commons.codec.binary.Base64;
+import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
-
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.util.Base64;
 /**
  * Service for retrieving DataStream objects which can be used to query data over ranges
  * or aggregates.
  */
 public class DataStreamService {
 	private static final Logger log = LoggerFactory.getLogger(DataStreamService.class);
-	static final AsyncHttpClient httpClient = new AsyncHttpClient();
-	private String username;
-	private String password;
-
+	static final HttpClient httpclient = new DefaultHttpClient();
+    final static String SCHEME = "https";
+	  
 	private String host;
 	private String auth;
 	
 	private DataStreamService(String username, String password, String host) {
-		super();
-		this.username = username;
-		this.password = password;
+		super(); 
 		this.host = host;
 		String userpassword = username + ":" + password;
-		this.auth = Base64.encode(userpassword.getBytes()).trim(); 
+		this.auth = Base64.encodeBase64String(userpassword.getBytes()).trim(); 
 	}
 	
 	/**

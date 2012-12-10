@@ -95,6 +95,7 @@ public class GraphStream extends ApplicationFrame {
         demo.pack();
         RefineryUtilities.centerFrameOnScreen(demo);
         demo.setVisible(true);
+        System.out.println("Your graph is ready...");
     }
 
 }

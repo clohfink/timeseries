@@ -6,11 +6,6 @@
   <name>Data Stream Client Library</name>
   <dependencies>
   	<dependency>
-  		<groupId>com.ning</groupId>
-  		<artifactId>async-http-client</artifactId>
-  		<version>1.7.5</version>
-  	</dependency>
-  	<dependency>
   		<groupId>com.thoughtworks.xstream</groupId>
   		<artifactId>xstream</artifactId>
   		<version>1.4.2</version>
@@ -41,5 +36,10 @@
 	    <artifactId>jfreechart</artifactId>
 	    <version>1.0.13</version>
     </dependency>
+  	<dependency>
+  		<groupId>org.apache.httpcomponents</groupId>
+  		<artifactId>httpclient</artifactId>
+  		<version>4.2.2</version>
+  	</dependency>
   </dependencies>
 </project>
