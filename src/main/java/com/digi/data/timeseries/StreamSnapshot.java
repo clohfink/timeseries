@@ -53,13 +53,15 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
     }
 
     public synchronized HttpResponse fetchNextChunk()
-			throws IOException {
-		try {
-    		URIBuilder builder = new URIBuilder();
-    		builder.setScheme(service.SCHEME).setHost(service.getHost())
-    		    .setPath("/ws/DataPoint/"+stream.getStreamName())
-    		    .setParameter("startTime", ""+start)
-    		    .setParameter("endTime", ""+end);
+            throws IOException {
+        try {
+            URIBuilder builder = new URIBuilder();
+            builder.setScheme(service.getScheme())
+                .setHost(service.getHost())
+                .setPort(service.getPort())
+                .setPath("/ws/DataPoint/"+stream.getStreamName())
+                .setParameter("startTime", ""+start)
+                .setParameter("endTime", ""+end);
 
             // are doing a rollup?
             if (!Interval.None.equals(interval)) {
@@ -76,17 +78,17 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
                 }
             }
             
-    		URI uri = builder.build();
+            URI uri = builder.build();
             log.debug("query: "+uri.toString());
-    		HttpGet httpget = new HttpGet(uri);
-    		httpget.setHeader("Content-type", "text/xml; charset=utf-8");
+            HttpGet httpget = new HttpGet(uri);
+            httpget.setHeader("Content-type", "text/xml; charset=utf-8");
             httpget.setHeader("Authorization", "Basic " + service.getAuthHeader());
             return service.httpclient.execute(httpget);
-		} catch (URISyntaxException syntax) {
-		    log.error("URI Syntax exception: ", syntax);
-		}
-		return null;
-	}
+        } catch (URISyntaxException syntax) {
+            log.error("URI Syntax exception: ", syntax);
+        }
+        return null;
+    }
 
     /**
      * returns true if there is additional datapoints available in this time
