@@ -69,6 +69,11 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
                 builder.setParameter("rollupMethod", aggregate.name().toLowerCase()); 
             }
             
+            // is the timezone set?
+            if (service.getTimezone() != null) {
+                builder.setParameter("timezone", service.getTimezone());
+            }
+            
             // continue from previous call?
             if(dom != null) {
                 NodeList nl = dom.getElementsByTagName("pageCursor");

@@ -1,6 +1,8 @@
 package com.digi.data.timeseries;
 
 import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -10,6 +12,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.slf4j.Logger;
@@ -26,12 +29,16 @@ public class DataStreamService {
     private int port = 443; 
     private String host;
     private String auth;
+    private String timezone = null;
+    
+    private static Map<String, DataStreamService> services = new HashMap();
     
     private DataStreamService(String username, String password, String host) {
         super(); 
         this.host = host;
         String userpassword = username + ":" + password;
         this.auth = Base64.encodeBase64String(userpassword.getBytes()).trim(); 
+        System.err.println(this);
     }
     
     /**
@@ -53,15 +60,19 @@ public class DataStreamService {
     * @param password
     * @return
     */
-    public static DataStreamService getService(String username, String password) {
+    public static synchronized DataStreamService getService(String username, String password) {
         return new DataStreamService(username, password, "my.idigi.com");
     }
 
     /**
     * @see getService
     */
-    public static DataStreamService getServiceForHost(String host, String username, String password) {
-        return new DataStreamService(username, password, host);
+    public static DataStreamService getServiceForHost(String host, String username, String password) { 
+        String key = host+"::"+username+"::"+DigestUtils.md5Hex(password);
+        if(services.get(key) == null) {
+            services.put(key, new DataStreamService(username, password, host));
+        }
+        return services.get(key);
     }
     
     /**
@@ -145,5 +156,13 @@ public class DataStreamService {
      */
     public int getPort() {
         return port;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 }
