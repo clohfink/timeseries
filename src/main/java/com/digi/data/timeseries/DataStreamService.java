@@ -37,7 +37,7 @@ public class DataStreamService {
         HttpParams params = new BasicHttpParams();
         SchemeRegistry registry = new SchemeRegistry();
         registry.register(new Scheme("http", 80, PlainSocketFactory.getSocketFactory()));
-        registry.register(new Scheme("https", SSLSocketFactory.getSocketFactory(), 443));
+        registry.register(new Scheme("https", 443, SSLSocketFactory.getSocketFactory()));
         ClientConnectionManager ccm = new PoolingClientConnectionManager(registry);
         
         httpclient = new DefaultHttpClient(ccm, params);
