@@ -37,6 +37,7 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
     private long start;
     private long end; 
     private Document dom;
+    private boolean more = true;
 
     public StreamSnapshot(DataStream<DataType> stream, long start, long end, Interval interval, Aggregate aggregate) {
         this.stream = stream;
@@ -100,7 +101,7 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
      * period
      */
     public synchronized boolean hasNext() {
-        if (buffer == null || buffer.size() == 0) {
+        if ((buffer == null || buffer.size() == 0) && more) {
             // empty buffer, we are either done or need to fetch more
             if (buffer == null)
                 buffer = new LinkedList();
@@ -128,6 +129,7 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
                     dp.setValueClass(stream.getValueClass());
                     buffer.add(dp);
                 } 
+                more = points.getLength() == 1000;
             } catch (Exception e) {
                 log.error(e.getMessage(), e);
             }
