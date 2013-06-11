@@ -14,7 +14,14 @@ import javax.xml.transform.stream.StreamResult;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.http.client.HttpClient;
+import org.apache.http.conn.ClientConnectionManager;
+import org.apache.http.conn.scheme.PlainSocketFactory;
+import org.apache.http.conn.scheme.Scheme;
+import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.PoolingClientConnectionManager;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
@@ -24,7 +31,14 @@ import org.w3c.dom.Node;
  */
 public class DataStreamService {
     private static final Logger log = LoggerFactory.getLogger(DataStreamService.class);
-    static final HttpClient httpclient = new DefaultHttpClient();
+    static final HttpClient httpclient;
+    static {
+        HttpParams params = new BasicHttpParams();
+        SchemeRegistry registry = new SchemeRegistry();
+        registry.register(new Scheme("http", 80, PlainSocketFactory.getSocketFactory()));
+        ClientConnectionManager ccm = new PoolingClientConnectionManager(registry);
+        httpclient = new DefaultHttpClient(ccm, params);
+    } 
     private String scheme = "https";
     private int port = 443; 
     private String host;
