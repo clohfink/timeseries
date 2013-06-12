@@ -130,13 +130,11 @@ public class DataStream<DataType> {
     */
     public StreamSnapshot<DataType> get(Aggregate aggregate, Interval interval,
             long start, long end) {
-        return new StreamSnapshot<DataType>(this, start, end, interval, aggregate);
+        return new StreamSnapshot<DataType>(this, start, end, interval, aggregate, null);
     }
     
     public StreamSnapshot<DataType> get(Aggregate aggregate, Interval interval, long start, long end, String joined) {
-        StreamSnapshot<DataType> ret = new StreamSnapshot<DataType>(this, start, end, interval, aggregate);
-        ret.setJoin(joined);
-        return ret;
+        return new StreamSnapshot<DataType>(this, start, end, interval, aggregate, joined);
     }
     
     /**

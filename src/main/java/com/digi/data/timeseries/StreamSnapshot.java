@@ -41,11 +41,12 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
     private boolean more = true;
     private String join = null;
 
-    public StreamSnapshot(DataStream<DataType> stream, long start, long end, Interval interval, Aggregate aggregate) {
+    public StreamSnapshot(DataStream<DataType> stream, long start, long end, Interval interval, Aggregate aggregate, String join) {
         this.stream = stream;
         service = stream.getService();
         this.start = start;
         this.end = end;
+        this.join = join;
         this.interval = interval == null ? Interval.None : interval;
         this.aggregate = aggregate == null ? Aggregate.None : aggregate;
         boolean noIntervalWithAgg = interval.equals(Interval.None) && !aggregate.equals(Aggregate.None);
@@ -167,7 +168,7 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
      * iteration
      */
     public Iterator<DataPoint<DataType>> iterator() {
-        return new StreamSnapshot<DataType>(stream, start, end, interval, aggregate);
+        return new StreamSnapshot<DataType>(stream, start, end, interval, aggregate, join);
     }
 
     public String getJoin() {
