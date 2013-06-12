@@ -132,7 +132,13 @@ public class DataStream<DataType> {
             long start, long end) {
         return new StreamSnapshot<DataType>(this, start, end, interval, aggregate);
     }
-
+    
+    public StreamSnapshot<DataType> get(Aggregate aggregate, Interval interval, long start, long end, String joined) {
+        StreamSnapshot<DataType> ret = new StreamSnapshot<DataType>(this, start, end, interval, aggregate);
+        ret.setJoin(joined);
+        return ret;
+    }
+    
     /**
      * Fetch the data points between two times. The returned snapshot can be
      * used as iterator or iterable in loop, ie

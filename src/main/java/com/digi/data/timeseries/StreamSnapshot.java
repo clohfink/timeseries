@@ -3,6 +3,7 @@ package com.digi.data.timeseries;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +39,7 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
     private long end; 
     private Document dom;
     private boolean more = true;
+    private String join = null;
 
     public StreamSnapshot(DataStream<DataType> stream, long start, long end, Interval interval, Aggregate aggregate) {
         this.stream = stream;
@@ -74,7 +76,10 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
             if (service.getTimezone() != null) {
                 builder.setParameter("timezone", service.getTimezone());
             }
-            
+            // join other streams?
+            if(join != null) {
+                builder.setParameter("join", join);
+            }
             // continue from previous call?
             if(dom != null) {
                 NodeList nl = dom.getElementsByTagName("pageCursor");
@@ -163,6 +168,14 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
      */
     public Iterator<DataPoint<DataType>> iterator() {
         return new StreamSnapshot<DataType>(stream, start, end, interval, aggregate);
+    }
+
+    public String getJoin() {
+        return join;
+    }
+
+    public void setJoin(String join) {
+        this.join = join;
     }
 
 }
