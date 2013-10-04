@@ -54,8 +54,7 @@ public class DataStreamService {
         super(); 
         this.host = host;
         String userpassword = username + ":" + password;
-        this.auth = Base64.encodeBase64String(userpassword.getBytes()).trim(); 
-        System.err.println(this);
+        this.auth = Base64.encodeBase64String(userpassword.getBytes()).trim();
     }
     
     /**

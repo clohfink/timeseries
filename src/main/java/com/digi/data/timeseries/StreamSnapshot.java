@@ -37,16 +37,24 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
     private List<DataPoint<DataType>> buffer;
     private long start;
     private long end; 
+    private boolean reversed = false;
     private Document dom;
+    private int size = -1;
     private boolean more = true;
     private String join = null;
-
+    
     public StreamSnapshot(DataStream<DataType> stream, long start, long end, Interval interval, Aggregate aggregate, String join) {
+        this(stream, start, end, false, -1, interval, aggregate, join);
+    }
+    
+    public StreamSnapshot(DataStream<DataType> stream, long start, long end, boolean reversed, int size, Interval interval, Aggregate aggregate, String join) {
         this.stream = stream;
         service = stream.getService();
         this.start = start;
         this.end = end;
+        this.reversed = reversed;
         this.join = join;
+        this.size = size;
         this.interval = interval == null ? Interval.None : interval;
         this.aggregate = aggregate == null ? Aggregate.None : aggregate;
         boolean noIntervalWithAgg = interval.equals(Interval.None) && !aggregate.equals(Aggregate.None);
@@ -80,6 +88,12 @@ public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, 
             // join other streams?
             if(join != null) {
                 builder.setParameter("join", join);
+            }
+            if(reversed) {
+                builder.setParameter("order", "desc");
+            }
+            if(size != -1) {
+                builder.setParameter("size", ""+size);
             }
             // continue from previous call?
             if(dom != null) {

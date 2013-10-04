@@ -129,8 +129,17 @@ public class DataStream<DataType> {
     * @return
     */
     public StreamSnapshot<DataType> get(Aggregate aggregate, Interval interval,
+            long start, long end, boolean reversed) {
+        return new StreamSnapshot<DataType>(this, start, end, reversed, -1, interval, aggregate, null);
+    }
+    
+    public StreamSnapshot<DataType> get(Aggregate aggregate, Interval interval,
             long start, long end) {
-        return new StreamSnapshot<DataType>(this, start, end, interval, aggregate, null);
+        return new StreamSnapshot<DataType>(this, start, end, false, -1, interval, aggregate, null);
+    }
+
+    public StreamSnapshot<DataType> get(Aggregate aggregate, Interval interval, long start, long end, boolean reversed, int size, String joined) {
+        return new StreamSnapshot<DataType>(this, start, end, reversed, size, interval, aggregate, joined);
     }
     
     public StreamSnapshot<DataType> get(Aggregate aggregate, Interval interval, long start, long end, String joined) {
