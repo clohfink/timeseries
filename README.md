@@ -1,12 +1,12 @@
-# DeviceCloud by Etherios time series client 
+## DeviceCloud by Etherios time series client 
 
  This is a java wrapper to the data stream web services outlined [here](https://www.digi.com/wiki/developer/index.php/IDigi_Data_Streams)
  
-## Installation
+### Installation
 
 TODO
 
-## Usage
+### Usage
 
 You can create a DataStreamService that will be used to store authentication details.  It is recommended to create this with spring or save it
 in a static final variable.
