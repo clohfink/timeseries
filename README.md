@@ -1,12 +1,10 @@
-# iDigi time series java client (in progress)
-==================================
- 
+# DeviceCloud by Etherios time series client 
+
  This is a java wrapper to the data stream web services outlined [here](https://www.digi.com/wiki/developer/index.php/IDigi_Data_Streams)
  
 ## Installation
 
-- Download
-from: https://github.com/clohfink/timeseries/downloads
+TODO
 
 ## Usage
 
