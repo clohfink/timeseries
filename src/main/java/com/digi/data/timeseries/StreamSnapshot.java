@@ -3,7 +3,6 @@ package com.digi.data.timeseries;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -22,10 +21,32 @@ import org.w3c.dom.NodeList;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.StaxDriver;
+import com.thoughtworks.xstream.mapper.MapperWrapper;
 
 public class StreamSnapshot<DataType> implements Iterator<DataPoint<DataType>>, Iterable<DataPoint<DataType>> {
     private static final Logger log = LoggerFactory.getLogger(StreamSnapshot.class);
-    static final XStream xstream = new XStream(new StaxDriver());
+    // Skip any fields that aren't defined in DataPoint to protected UnknownFieldException from being raised in
+    // future if any new fields are added to the DataPoint resource.
+    static final XStream xstream = new XStream(new StaxDriver()) {
+        @Override
+        protected MapperWrapper wrapMapper(MapperWrapper next) {
+            return new MapperWrapper(next) {
+                @Override
+                @SuppressWarnings("rawtypes")
+                public boolean shouldSerializeMember(Class definedIn, String fieldName) {
+                    if (definedIn == Object.class) {
+                        try {
+                            return this.realClass(fieldName) != null;
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    } else {
+                        return super.shouldSerializeMember(definedIn, fieldName);
+                    }
+                }
+            };
+        }
+    };
     static {
         xstream.alias("DataPoint", DataPoint.class);
     }
